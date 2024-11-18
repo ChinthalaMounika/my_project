@@ -1,26 +1,34 @@
-
 # My Project
 
 ## Summary
-This project allows users to upload CSV files, process data, and retrieve results based on custom queries.
+This project allows users to upload CSV files or connect Google Sheets to retrieve and display data based on custom queries.
 
 ## Setup Instructions
+To run this project locally:
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/my_project.git
-   cd my_project
-pip install -r requirements.txt
-Run the application:
-python app.py
-Usage Guide
+   git clone https://github.com/yourusername/yourrepository.git
+   cd yourrepository
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```bash
+   python app.py
+   ```
 
-Upload CSV files using the dashboard.
-Select the column to be processed.
-Input a custom query for data extraction.
-Dependencies
+## Usage Guide
+1. Upload a CSV file or connect Google Sheets.
+2. Select the primary column for extraction.
+3. Input a custom query for data retrieval.
+4. View and download the results.
 
-pandas for data processing
-ipywidgets for the user interface
+## Third-Party Tools
+- `pandas`: For data manipulation
+- `ipywidgets`: For UI elements
+
 
 
 
