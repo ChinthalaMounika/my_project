@@ -1,0 +1,173 @@
+import pandas as pd
+import dash
+from dash import dcc, html, Input, Output, State
+import dash_bootstrap_components as dbc
+import plotly.express as px
+import dash_table
+import io
+import base64
+
+# Initialize the app with a Bootstrap theme
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.title = "CSV Dashboard"
+
+# Global variable to store the uploaded dataframe
+df = None
+
+# Layout of the app
+app.layout = dbc.Container(
+    [
+        dbc.Row(
+            dbc.Col(html.H1("CSV Data Dashboard", className="text-center text-primary mt-4 mb-4"), width=12)
+        ),
+        dbc.Row(
+            dbc.Col(
+                dcc.Upload(
+                    id="upload-data",
+                    children=html.Div(
+                        [
+                            "Drag and Drop or ",
+                            html.A("Select a CSV File", className="text-primary font-weight-bold"),
+                        ]
+                    ),
+                    style={
+                        "width": "100%",
+                        "height": "60px",
+                        "lineHeight": "60px",
+                        "borderWidth": "1px",
+                        "borderStyle": "dashed",
+                        "borderRadius": "5px",
+                        "textAlign": "center",
+                        "margin": "10px",
+                        "backgroundColor": "#f9f9f9",
+                    },
+                    multiple=False,
+                ),
+                width=12,
+            )
+        ),
+        dbc.Row(
+            dbc.Col(
+                html.Div(id="file-upload-status", className="text-center text-info font-italic mt-2"),
+                width=12,
+            )
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Select a Column:", className="font-weight-bold"),
+                        dcc.Dropdown(id="column-dropdown", placeholder="Select a column"),
+                    ],
+                    width=6,
+                ),
+                dbc.Col(
+                    [
+                        html.Label("Enter Your Custom Query:", className="font-weight-bold"),
+                        dcc.Input(
+                            id="custom-query",
+                            type="text",
+                            placeholder="E.g., Get the email address of {company}",
+                            className="form-control",
+                        ),
+                    ],
+                    width=6,
+                ),
+            ],
+            className="mt-4",
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    html.Div(id="data-preview", className="mt-4"),
+                    width=12,
+                )
+            ]
+        ),
+        dbc.Row(
+            dbc.Col(
+                [
+                    dbc.Button("Export Filtered Data", id="export-button", color="primary", className="mr-2"),
+                    dcc.Download(id="download-dataframe-csv"),
+                ],
+                className="text-center mt-4",
+            )
+        ),
+        dbc.Row(
+            dbc.Col(
+                [
+                    html.Label("Data Distribution:", className="font-weight-bold mt-4"),
+                    dcc.Graph(id="data-plot"),
+                ],
+                width=12,
+            )
+        ),
+    ],
+    fluid=True,
+)
+
+# Callback to handle file upload
+@app.callback(
+    [Output("file-upload-status", "children"),
+     Output("column-dropdown", "options"),
+     Output("data-preview", "children")],
+    [Input("upload-data", "contents")],
+    [State("upload-data", "filename")]
+)
+def upload_and_display(contents, filename):
+    global df
+    if contents is not None:
+        content_type, content_string = contents.split(",")
+        decoded = base64.b64decode(content_string)
+        try:
+            # Read the CSV into a DataFrame
+            df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
+            options = [{"label": col, "value": col} for col in df.columns]
+            # Preview the data
+            preview_table = dash_table.DataTable(
+                data=df.head().to_dict("records"),
+                columns=[{"name": col, "id": col} for col in df.columns],
+                style_table={"overflowX": "auto", "marginTop": "20px"},
+                style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
+                style_cell={"textAlign": "left", "padding": "10px"},
+            )
+            return f"Uploaded: {filename}", options, preview_table
+        except Exception as e:
+            return f"Error processing file: {e}", [], None
+    return "No file uploaded", [], None
+
+# Callback to handle plotting
+@app.callback(
+    Output("data-plot", "figure"),
+    [Input("column-dropdown", "value")]
+)
+def update_plot(selected_column):
+    if df is not None and selected_column:
+        fig = px.histogram(df, x=selected_column, title=f"Distribution of {selected_column}")
+        fig.update_layout(
+            template="simple_white",
+            title_font=dict(size=20, color="blue"),
+            xaxis_title_font=dict(size=14),
+            yaxis_title_font=dict(size=14),
+        )
+        return fig
+    return {}
+
+# Callback to export filtered data
+@app.callback(
+    Output("download-dataframe-csv", "data"),
+    [Input("export-button", "n_clicks")],
+    [State("column-dropdown", "value")]
+)
+def export_data(n_clicks, selected_column):
+    if n_clicks and df is not None:
+        if selected_column:
+            filtered_df = df[[selected_column]]  # Example: Export only selected column
+        else:
+            filtered_df = df
+        return dcc.send_data_frame(filtered_df.to_csv, "exported_data.csv")
+    return dash.no_update
+
+# Run the app
+if __name__ == "__main__":
+    app.run_server(debug=True)
